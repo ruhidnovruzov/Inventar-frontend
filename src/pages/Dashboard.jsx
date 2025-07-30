@@ -1,0 +1,492 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import {
+  Building2, GraduationCap, Users, DoorOpen, BookOpen, Laptop, RefreshCw,
+  AlertCircle, Monitor, Printer, Projector, Cpu, Cable, X, Phone
+} from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Legend, CartesianGrid, PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import PhoneTable from '../PhoneTable';
+import { phoneData } from '../PhoneData';
+
+// AnimatedCounter komponenti: Rəqəmlərin animasiyalı şəkildə artmasını təmin edir.
+function AnimatedCounter({ end, duration = 500 }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      setCount(Math.floor(progress * end));
+
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      } else {
+        setCount(end);
+      }
+    };
+
+    window.requestAnimationFrame(step);
+  }, [end, duration]);
+
+  return <>{count.toLocaleString()}</>;
+}
+
+// LoadingCard komponenti: Məlumatlar yüklənərkən göstərilən animasiyalı kart.
+function LoadingCard() {
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+      <div className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <div className="bg-gray-200 h-12 w-12 rounded-lg"></div>
+            <div className="mt-4 h-6 bg-gray-200 rounded w-24"></div>
+            <div className="mt-1 h-8 bg-gray-200 rounded w-16"></div>
+          </div>
+          <div className="h-12 w-1 bg-gray-200 rounded-full"></div>
+        </div>
+        <div className="mt-4">
+          <div className="h-4 bg-gray-200 rounded w-20"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ErrorState komponenti: Məlumat yüklənməsində xəta baş verdikdə göstərilən və yenidən cəhd düyməsi olan hissə.
+function ErrorState({ onRetry }) {
+  return (
+    <div className="min-h-[300px] flex items-center justify-center">
+      <div className="text-center">
+        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Məlumatları yükləmək mümkün olmadı</h3>
+        <p className="text-gray-500 mb-4">Zəhmət olmasa bir az sonra yenidən cəhd edin</p>
+        <button
+          onClick={onRetry}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Yenidən cəhd et
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Modal komponenti: Kartlara kliklənərkən açılan detallı məlumat pəncərəsi.
+function Modal({ isOpen, onClose, data, loadingModalData }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl transform transition-all">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b">
+          <h3 className="text-2xl font-bold text-gray-900">{data.name} Detalları</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500 transition-colors"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 max-h-[70vh] overflow-y-auto">
+          {loadingModalData ? (
+            <div className="flex justify-center items-center h-48">
+              <RefreshCw className="h-8 w-8 text-indigo-500 animate-spin" />
+              <span className="ml-2 text-lg text-gray-700">Məlumatlar yüklənir...</span>
+            </div>
+          ) : data.name === 'IP telefon Sayı' ? (
+            <PhoneTable data={phoneData} />
+          ) : data.name === 'Texniki göstəricilər' ? (
+            <div className="space-y-4">
+              {data.details && data.details.length > 0 ? (
+                data.details.map((param, index) => (
+                  <div key={index} className="p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <h4 className="font-semibold text-lg mb-2">{param.parametrAd}</h4>
+                    {param.deyerler && param.deyerler.length > 0 ? (
+                      <ul className="list-disc list-inside space-y-1">
+                        {param.deyerler.map((deyer, idx) => (
+                          <li key={idx}>{deyer.deyer}: {deyer.say} ədəd</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-gray-600">Bu parametr üçün dəyərlər tapılmadı.</p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-600">Texniki göstəricilər mövcud deyil.</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {data.details && data.details.length > 0 ? (
+                // Hər bir avadanlıq obyektini göstəririk
+                data.details.map((item, index) => (
+                  <div key={item._id || index} className="p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                    {/* Kompüter, Monitor, Printer, Proyektor üçün eyni şablon */}
+                    {(data.name === 'Ümumi Kompüter Sayı' || data.name === 'Ümumi Monitor Sayı' || data.name === 'Ümumi Printer Sayı' || data.name === 'Ümumi Proyektor Sayı') && (
+                      <>
+                        <p><span className="font-medium">Korpus:</span> {item.korpus}</p>
+                        <p><span className="font-medium">Say:</span> {item.say}</p>
+                        {item.qeydler && <p><span className="font-medium">Qeydlər:</span> {item.qeydler}</p>}
+                      </>
+                    )}
+                    {/* Avadanlıqlar kartı üçün ümumi saylar */}
+                    {data.name === 'Avadanlıqlar' && typeof item === 'string' && (
+                      <p>{item}</p>
+                    )}
+                    {/* Digər statik kartlar üçün məlumatlar */}
+                    {(data.name === 'Auditoriyalar üzrə kompüter sayı' || data.name === 'Şöbələr üzrə kompüter sayı' || data.name === 'Fakültə' || data.name === 'Kafedra' || data.name === 'Korpuslar' || data.name === 'Otaqlar' || data.name === 'İstifadəçilər') && (
+                        typeof item === 'string' ? <p>{item}</p> : (item.name ? <p>{item.name}: {item.value}</p> : null)
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-600">Detallı məlumat yoxdur.</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t bg-gray-50 rounded-b-2xl">
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 active:bg-gray-950 transform transition-all duration-200 hover:scale-105"
+            >
+              Bağla
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function Dashboard() {
+  const [stats, setStats] = useState({
+    common_computer_count: 0,
+    monitor_count: 0,
+    printer_count: 0,
+    projector_count: 0,
+    cpu_count: 0, // İndi bütün texniki göstəricilərin cəmi olacaq
+    equipment_count: 0,
+    // Toxunulmayacaq statik məlumatlar
+    faculty_count: 8,
+    department_count: 20,
+    room_count: 30,
+    corps_count: 7,
+    user_count: 3,
+    tel_count: 148,
+    audotory_count_computers: 1142,
+    department_computer_count: 586,
+  });
+
+  const [shouldAnimate, setShouldAnimate] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalData, setModalData] = useState({ name: '', details: [] });
+  const [loadingModalData, setLoadingModalData] = useState(false); // Modal üçün yüklənmə statusu
+
+  const [computerChartData, setComputerChartData] = useState([]);
+  const [monitorChartData, setMonitorChartData] = useState([]);
+  const [cpuChartData, setCpuChartData] = useState([]); // Texniki göstəricilər üçün qrafik datası
+
+  const API_BASE_URL = 'https://inventar-backend.onrender.com/api';
+
+  // Auditoriya və Şöbələr arası kompüterlərin faiz fərqi üçün statik məlumat (toxunulmur)
+  const auditoryDeptPieData = [
+    { name: 'Auditoriya', value: stats.audotory_count_computers },
+    { name: 'Şöbələr', value: stats.department_computer_count }
+  ];
+
+  const COLORS = ['#4CAF50', '#FFC107']; // Pie chart üçün rənglər
+
+  // Məlumatları API-dən çəkən funksiya
+  const fetchStats = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const umumiSaylarRes = await axios.get(`${API_BASE_URL}/statistika/umumi-saylar`);
+      const umumiSaylarData = umumiSaylarRes.data;
+
+      const texnikiGostericilerRes = await axios.get(`${API_BASE_URL}/statistika/texniki-gostericiler`);
+      const texnikiGostericilerData = texnikiGostericilerRes.data;
+
+      const korpusIcmalRes = await axios.get(`${API_BASE_URL}/statistika/korpus-icmali`);
+      const korpusIcmal = korpusIcmalRes.data;
+
+      // Texniki göstəricilərin ümumi sayını hesablayırıq və qrafik üçün hazırlayırıq
+      let totalTexnikiGostericiCount = 0;
+      const cpuChartDetails = []; // Bu, CPU qrafiki üçün istifadə olunacaq
+      
+      texnikiGostericilerData.forEach(param => {
+        param.deyerler.forEach(deyer => {
+          totalTexnikiGostericiCount += deyer.say; // Bütün texniki göstəricilərin sayını toplayırıq
+          // CPU qrafiki üçün yalnız CPU və "Digərləri" parametrlərini əlavə edirik
+          if (param.parametrAd === 'CPU' || param.parametrAd === 'Digərləri') {
+            cpuChartDetails.push({ name: deyer.deyer, value: deyer.say });
+          }
+        });
+      });
+      setCpuChartData(cpuChartDetails); // CPU qrafiki üçün məlumatları yeniləyirik
+
+      // Məlumatları state-ə yükləyirik
+      setStats(prevStats => ({
+        ...prevStats,
+        common_computer_count: umumiSaylarData.komputerler.umumiSay,
+        monitor_count: umumiSaylarData.monitorlar.umumiSay,
+        printer_count: umumiSaylarData.printerler.umumiSay,
+        projector_count: umumiSaylarData.proyektorlar.umumiSay,
+        cpu_count: totalTexnikiGostericiCount, // Ümumi texniki göstəricilərin sayı
+        equipment_count: umumiSaylarData.komputerler.umumiSay + umumiSaylarData.monitorlar.umumiSay + umumiSaylarData.printerler.umumiSay + umumiSaylarData.proyektorlar.umumiSay + prevStats.tel_count,
+      }));
+
+      // Kompüter və Monitor qrafik məlumatlarını korpus icmalından hazırlayırıq
+      const computerGraphData = korpusIcmal.map(item => ({
+        name: item.korpus,
+        value: item.komputerSayi
+      }));
+      setComputerChartData(computerGraphData);
+
+      const monitorGraphData = korpusIcmal.map(item => ({
+        name: item.korpus,
+        value: item.monitorSayi
+      }));
+      setMonitorChartData(monitorGraphData);
+
+      setLastUpdated(new Date());
+      setShouldAnimate(false);
+      setTimeout(() => setShouldAnimate(true), 100);
+      setIsLoading(false);
+
+    } catch (err) {
+      setError(err);
+      console.error('Error fetching statistics:', err);
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // Kartlara kliklənərkən modal məlumatlarını hazırlayan funksiya
+  const handleCardClick = async (name, apiPath = null, staticDetails = []) => {
+    setIsModalOpen(true);
+    setLoadingModalData(true); // Modalı yüklənmə vəziyyətinə gətir
+    setModalData({ name: name, details: [] }); // Əvvəlki məlumatları təmizlə
+
+    let details = [];
+
+    try {
+      if (apiPath) {
+        // API-dən detalları çək
+        const response = await axios.get(`${API_BASE_URL}${apiPath}`);
+        details = response.data;
+
+        // "Texniki göstəricilər" üçün xüsusi işləmə (API cavabı olduğu kimi istifadə olunur)
+        // Digər avadanlıqlar (kompüter, monitor, printer, proyektor) üçün də birbaşa istifadə olunur
+      } else if (name === 'Avadanlıqlar') {
+        // Avadanlıqlar üçün ümumi sayları göstər (API-dən gələn statlardan)
+        details = [
+          `Kompüterlər: ${stats.common_computer_count}`,
+          `Monitorlar: ${stats.monitor_count}`,
+          `Printerlər: ${stats.printer_count}`,
+          `Proyektorlar: ${stats.projector_count}`,
+          // Bu statik məlumatları yenə də əlavə edirik, əgər API-dən gəlmirsə
+          `Anbarda olan kompüter: 327`,
+          `Ümumi IP telefon (148 Aktiv; 2 Anbar): ${stats.tel_count + 2}`
+        ];
+      } else if (name === 'IP telefon Sayı') {
+        // IP telefonlar üçün xüsusi PhoneTable komponenti istifadə olunur
+        details = [];
+      } else {
+        // Digər statik kartlar üçün verilən detalları istifadə et
+        details = staticDetails;
+      }
+      setModalData({ name: name, details: details });
+    } catch (err) {
+      console.error(`Error fetching details for ${name}:`, err);
+      setModalData({ name: name, details: [`Məlumatlar yüklənərkən xəta baş verdi: ${err.message}`] });
+    } finally {
+      setLoadingModalData(false); // Yüklənmə bitdi
+    }
+  };
+
+
+  // Kart məlumatları
+  const statsData = [
+    // Dinamik məlumatlar (API-dən çəkiləcək detallar)
+    { name: 'Avadanlıqlar', count: stats.equipment_count, icon: Cable, color: 'bg-red-500', apiPath: null },
+    { name: 'Ümumi Kompüter Sayı', count: stats.common_computer_count, icon: Laptop, color: 'bg-blue-500', apiPath: '/komputerler' },
+    { name: 'Texniki göstəricilər', count: stats.cpu_count, icon: Cpu, color: 'bg-[#FF6600]', apiPath: '/statistika/texniki-gostericiler' },
+    { name: 'Ümumi Monitor Sayı', count: stats.monitor_count, icon: Monitor, color: 'bg-green-500', apiPath: '/monitorlar' },
+    { name: 'Ümumi Printer Sayı', count: stats.printer_count, icon: Printer, color: 'bg-purple-500', apiPath: '/printerler' },
+    { name: 'Ümumi Proyektor Sayı', count: stats.projector_count, icon: Projector, color: 'bg-yellow-500', apiPath: '/proyektorlar' },
+    { name: 'IP telefon Sayı', count: stats.tel_count, icon: Phone, color: 'bg-[#8FD14F]', apiPath: null },
+
+    // Toxunulmayacaq statik kartlar (detallar birbaşa `statsData`-da verilir)
+    { name: 'Auditoriyalar üzrə kompüter sayı', count: stats.audotory_count_computers, icon: Laptop, color: 'bg-blue-500', apiPath: null, details: ['1ci Korpus: 241', '2ci Korpus: 284', '3ci Korpus: 53', '4ci Korpus: 48', '5ci Korpus: 143', '6ci Korpus: 271', '7ci Korpus: 102'] },
+    { name: 'Şöbələr üzrə kompüter sayı', count: stats.department_computer_count, icon: Laptop, color: 'bg-[#6C48C5]', apiPath: null, details: ['1ci Korpus: 140', '2ci Korpus: 113', '3ci Korpus: 40', '4ci Korpus: 61', '5ci Korpus: 132', '6ci Korpus: 58', '7ci Korpus: 42'] },
+  ];
+
+
+  return (
+    <div className="min-h-screen">
+      {/* Header */}
+      <header>
+        <nav className="bg-gray-800 text-center text-white py-2 font-semibold">
+          <h1 className='text-xl'>Work-in-Progress</h1>
+        </nav>
+      </header>
+      <div className=" ">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex justify-between items-center gap-5">
+            <h1 className="md:text-3xl text-2xl font-semibold text-gray-900">Dashboard</h1>
+            <div className="flex items-center space-x-2 md:space-x-4">
+              {lastUpdated && (
+                <span className="text-sm text-gray-500">
+                  Son yeniləmə: <br /> {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
+              <button
+                onClick={fetchStats}
+                disabled={isLoading}
+                className={`inline-flex items-center px-2 py-1 md:px-4 md:py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed ${isLoading ? 'animate-pulse' : ''}`}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Yenilə
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {error ? (
+          <ErrorState onRetry={fetchStats} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isLoading
+              ? Array(6).fill(null).map((_, index) => <LoadingCard key={index} />)
+              : statsData.map((item) => (
+                <div
+                  key={item.name}
+                  className="bg-white rounded-lg cursor-pointer shadow-md overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                  // `apiPath` və `details` parametrlərini `handleCardClick` funksiyasına ötürürük
+                  onClick={() => handleCardClick(item.name, item.apiPath, item.details)}
+                >
+                  <div className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className={`inline-flex p-3 rounded-lg ${item.color} transform transition-transform duration-300 hover:rotate-12`}>
+                          <item.icon className="h-6 w-6 text-white" />
+                        </div>
+                        <h3 className="mt-4 text-xl font-medium text-gray-900">{item.name}</h3>
+                        <p className="mt-1 text-3xl font-semibold text-gray-900">
+                          {shouldAnimate ? <AnimatedCounter end={item.count} duration={500} /> : 0}
+                        </p>
+                      </div>
+                      <div className={`h-12 w-1 ${item.color} rounded-full`}></div>
+                    </div>
+                    <div className="mt-4">
+                      <div className="flex items-center text-sm text-gray-500">
+                        <span className="flex items-center">
+                          Ümumi say
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+          </div>
+        )}
+        <div className="w-full h-96 mt-10">
+          <h2 className="text-2xl font-bold text-center mb-4">Kompüterlər</h2>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={computerChartData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis domain={[0, 'auto']} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="value" fill="#4285F4" barSize={50} label={{ position: 'top', fill: 'black' }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+
+        <div className="w-full h-96 mt-20">
+          <h2 className="text-2xl font-bold text-center mb-4">CPU Nəsillər və Saylar</h2>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={cpuChartData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis domain={[0, 'auto']} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="value" fill="#FF6600" barSize={50} label={{ position: 'top', fill: 'black' }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+
+        <div className="w-full h-96 mt-20">
+          <h2 className="text-2xl font-bold text-center mb-4">Monitorlar</h2>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monitorChartData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis domain={[0, 'auto']} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="value" fill="#45EBA5" barSize={50} label={{ position: 'top', fill: 'black' }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="w-full h-[500px] flex flex-col items-center mt-20">
+          <h2 className="text-2xl font-bold text-center mb-4">Auditoriya və şöbələr arası kompüterlərin faiz fərqi</h2>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={auditoryDeptPieData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                outerRadius={200}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {auditoryDeptPieData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+
+      </main>
+      <footer className="bg-gray-800 text-white text-center py-4 mt-8">
+        <p>Made by Ruhid © {new Date().getFullYear()}</p>
+      </footer>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} data={modalData} loadingModalData={loadingModalData} />
+    </div>
+  );
+}
+
+export default Dashboard;
