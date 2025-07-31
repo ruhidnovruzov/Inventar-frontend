@@ -4,7 +4,7 @@ import { Phone, Building2, User, Search } from 'lucide-react';
 const PhoneTable = ({ data }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredData = data.filter(item => 
+  const filteredData = data.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.phone.includes(searchTerm)
@@ -63,22 +63,22 @@ const PhoneTable = ({ data }) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {filteredData.map((item, index) => (
-              <tr 
-                key={index}
+              <tr
+                key={item._id || index} // _id əlavə edildi, çünki API-dən gələn datada _id olacaq
                 className="hover:bg-blue-50/50 transition-colors duration-200"
               >
                 <td className="px-6 py-4">
                   <div className="flex items-center">
                     <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gradient-to-r from-blue-600 to-blue-800 flex items-center justify-center text-white font-semibold">
-                      {item.name.charAt(0)}
+                      {item.name ? item.name.charAt(0) : '-'} {/* Ad boş ola bilər */}
                     </div>
                     <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                      <div className="text-sm font-medium text-gray-900">{item.name || '-'}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900">{item.position}</div>
+                  <div className="text-sm text-gray-900">{item.position || '-'}</div>
                 </td>
                 <td className="px-6 py-4">
                   <a
@@ -86,7 +86,7 @@ const PhoneTable = ({ data }) => {
                     className="inline-flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200"
                   >
                     <Phone size={16} className="text-blue-600" />
-                    <span>{item.phone}</span>
+                    <span>{item.phone || '-'}</span>
                   </a>
                 </td>
               </tr>
