@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { 
-  PlusCircle, Edit, Trash2, X, AlertCircle, RefreshCw, Save, 
-  Laptop, Printer, Monitor, Projector, Cpu, 
-  LogOutIcon
+import {
+  PlusCircle, Edit, Trash2, X, AlertCircle, RefreshCw, Save,
+  Laptop, Printer, Monitor, Projector, Cpu, HardDrive, Phone, // Phone iconu əlavə edildi
+  LogOut
 } from 'lucide-react';
 
 // Sabitlər
@@ -14,41 +14,58 @@ const ENTITY_TYPES = {
   PRINTERLER: 'printerler',
   MONITORLAR: 'monitorlar',
   PROYEKTORLAR: 'proyektorlar',
-  TEXNIKI_GOSTERICILER: 'texniki-gostericiler'
+  MONOBLOKLAR: 'monobloklar',
+  TEXNIKI_GOSTERICILER: 'texniki-gostericiler',
+  IP_TELEFONLAR: 'ip-telefonlar' // Yeni: IP Telefonlar tipi
 };
 
 const TAB_CONFIG = [
-  { 
-    key: ENTITY_TYPES.KOMPUTERLER, 
-    label: 'Kompüterlər', 
-    icon: Laptop 
+  {
+    key: ENTITY_TYPES.KOMPUTERLER,
+    label: 'Kompüterlər',
+    icon: Laptop
   },
-  { 
-    key: ENTITY_TYPES.PRINTERLER, 
-    label: 'Printerlər', 
-    icon: Printer 
+  {
+    key: ENTITY_TYPES.PRINTERLER,
+    label: 'Printerlər',
+    icon: Printer
   },
-  { 
-    key: ENTITY_TYPES.MONITORLAR, 
-    label: 'Monitorlar', 
-    icon: Monitor 
+  {
+    key: ENTITY_TYPES.MONITORLAR,
+    label: 'Monitorlar',
+    icon: Monitor
   },
-  { 
-    key: ENTITY_TYPES.PROYEKTORLAR, 
-    label: 'Proyektorlar', 
-    icon: Projector 
+  {
+    key: ENTITY_TYPES.PROYEKTORLAR,
+    label: 'Proyektorlar',
+    icon: Projector
   },
-  { 
-    key: ENTITY_TYPES.TEXNIKI_GOSTERICILER, 
-    label: 'Texniki Göstəricilər', 
-    icon: Cpu 
+  {
+    key: ENTITY_TYPES.MONOBLOKLAR,
+    label: 'Monobloklar',
+    icon: HardDrive
+  },
+  {
+    key: ENTITY_TYPES.TEXNIKI_GOSTERICILER,
+    label: 'Texniki Göstəricilər',
+    icon: Cpu
+  },
+  {
+    key: ENTITY_TYPES.IP_TELEFONLAR, // Yeni: IP Telefonlar tabı
+    label: 'IP Telefonlar',
+    icon: Phone
   }
 ];
+
+// Kompüter kateqoriyaları üçün sabit
+const KOMPUTER_KATEGORIYALARI = ['Auditoriya', 'İnzibati', 'Akademik', 'Digər'];
+
 
 // Yardımçı funksiyalar
 const getEntityDisplayName = (entityType) => {
   const config = TAB_CONFIG.find(tab => tab.key === entityType);
-  return config ? config.label.replace('lər', '').replace('lar', '') : entityType;
+  // "lər" və "lar" hissələrini çıxararaq tək halını əldə edir
+  return config ? config.label.replace(/lər|lar/g, '') : entityType;
 };
 
 // Ana komponent
@@ -59,13 +76,15 @@ function AdminPanel() {
     [ENTITY_TYPES.PRINTERLER]: [],
     [ENTITY_TYPES.MONITORLAR]: [],
     [ENTITY_TYPES.PROYEKTORLAR]: [],
-    [ENTITY_TYPES.TEXNIKI_GOSTERICILER]: []
+    [ENTITY_TYPES.MONOBLOKLAR]: [],
+    [ENTITY_TYPES.TEXNIKI_GOSTERICILER]: [],
+    [ENTITY_TYPES.IP_TELEFONLAR]: [] // Yeni: IP Telefonlar datası
   });
 
   const [ui, setUi] = useState({
-    isLoading: true,
+    isLoading: true, // Başlanğıcda yüklənir
     error: null,
-    activeTab: ENTITY_TYPES.KOMPUTERLER,
+    activeTab: ENTITY_TYPES.KOMPUTERLER, // İlkin aktiv tab
     isModalOpen: false,
     modalType: 'add', // 'add' | 'edit'
     currentEntity: '',
@@ -74,8 +93,14 @@ function AdminPanel() {
 
   const [formData, setFormData] = useState({});
 
+  const logout = () => {
+    localStorage.removeItem('authToken'); // Tokeni sil
+    window.location.href = '/login'; // Login səhifəsinə yönləndir
+  }
+
   // API çağrıları
   const fetchData = useCallback(async (entityType) => {
+    setUi(prev => ({ ...prev, isLoading: true, error: null })); // Hər tab üçün yüklənməni başlat
     try {
       const response = await axios.get(`${API_BASE_URL}/${entityType}`);
       setData(prev => ({
@@ -88,48 +113,39 @@ function AdminPanel() {
         ...prev,
         error: `Məlumatları yükləmək mümkün olmadı: ${entityType}`
       }));
+    } finally {
+      setUi(prev => ({ ...prev, isLoading: false })); // Yüklənməni bitir
     }
   }, []);
 
-  const loadAllData = useCallback(async () => {
-    setUi(prev => ({ ...prev, isLoading: true, error: null }));
-    
-    try {
-      await Promise.all(
-        Object.values(ENTITY_TYPES).map(entityType => fetchData(entityType))
-      );
-    } finally {
-      setUi(prev => ({ ...prev, isLoading: false }));
-    }
-  }, [fetchData]);
-
-  // İlkin yükləmə
+  // İlkin yükləmə və tab dəyişdikdə məlumatları çəkmə
   useEffect(() => {
-    loadAllData();
-  }, [loadAllData]);
+    // Aktiv tab dəyişdikdə və ya komponent ilk yüklənəndə məlumatları çək
+    fetchData(ui.activeTab);
+  }, [ui.activeTab, fetchData]); // ui.activeTab dəyişdikdə bu useEffect yenidən işə düşəcək
 
   // Form idarəetməsi
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     if (name.startsWith('parametrinDeyerleri.')) {
       const [, index, field] = name.split('.');
       const newDeyerler = [...(formData.parametrinDeyerleri || [])];
-      
+
       if (!newDeyerler[index]) {
         newDeyerler[index] = {};
       }
-      
+
       newDeyerler[index][field] = field === 'say' ? parseInt(value) || 0 : value;
-      
+
       setFormData(prev => ({
         ...prev,
         parametrinDeyerleri: newDeyerler
       }));
     } else {
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: name === 'say' ? parseInt(value) || 0 : value 
+      setFormData(prev => ({
+        ...prev,
+        [name]: name === 'say' ? parseInt(value) || 0 : value
       }));
     }
   };
@@ -148,11 +164,6 @@ function AdminPanel() {
     }));
   };
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    window.location.href = '/login'; // Redirect to login page
-  }
-
   // Modal idarəetməsi
   const openModal = (type, entityType, item = null) => {
     setUi(prev => ({
@@ -162,7 +173,8 @@ function AdminPanel() {
       isModalOpen: true,
       editingId: item?._id || null
     }));
-    setFormData(item ? { ...item } : {});
+    // Kompüter üçün kateqoriya sahəsini ilkin olaraq təyin edin
+    setFormData(item ? { ...item } : (entityType === ENTITY_TYPES.KOMPUTERLER ? { kategoriya: KOMPUTER_KATEGORIYALARI[0] } : {}));
   };
 
   const closeModal = () => {
@@ -181,20 +193,22 @@ function AdminPanel() {
 
     try {
       const { modalType, currentEntity, editingId } = ui;
-      
+
       if (modalType === 'add') {
         await axios.post(`${API_BASE_URL}/${currentEntity}`, formData);
       } else {
         await axios.put(`${API_BASE_URL}/${currentEntity}/${editingId}`, formData);
       }
-      
-      await fetchData(currentEntity);
+
+      await fetchData(currentEntity); // Məlumatları yenilə
       closeModal();
     } catch (err) {
       console.error(`Error submitting ${ui.currentEntity}:`, err);
+      // Backend-dən gələn xəta mesajını göstər
+      const errorMessage = err.response?.data?.message || err.message;
       setUi(prev => ({
         ...prev,
-        error: `Məlumatı saxlamaq mümkün olmadı: ${err.message}`
+        error: `Məlumatı saxlamaq mümkün olmadı: ${errorMessage}`
       }));
     } finally {
       setUi(prev => ({ ...prev, isLoading: false }));
@@ -209,12 +223,13 @@ function AdminPanel() {
     try {
       setUi(prev => ({ ...prev, isLoading: true }));
       await axios.delete(`${API_BASE_URL}/${entityType}/${id}`);
-      await fetchData(entityType);
+      await fetchData(entityType); // Məlumatları yenilə
     } catch (err) {
       console.error(`Error deleting ${entityType}:`, err);
+      const errorMessage = err.response?.data?.message || err.message;
       setUi(prev => ({
         ...prev,
-        error: `Elementi silmək mümkün olmadı: ${err.message}`
+        error: `Elementi silmək mümkün olmadı: ${errorMessage}`
       }));
     } finally {
       setUi(prev => ({ ...prev, isLoading: false }));
@@ -269,6 +284,38 @@ function AdminPanel() {
       </>
     );
 
+    if (currentEntity === ENTITY_TYPES.KOMPUTERLER) {
+      return (
+        <>
+          {commonFields}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Kateqoriya
+            </label>
+            <div className="mt-2 space-y-2">
+              {KOMPUTER_KATEGORIYALARI.map((kategoriya) => (
+                <div key={kategoriya} className="flex items-center">
+                  <input
+                    id={`kategoriya-${kategoriya}`}
+                    name="kategoriya"
+                    type="radio"
+                    value={kategoriya}
+                    checked={formData.kategoriya === kategoriya}
+                    onChange={handleInputChange}
+                    className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                    required
+                  />
+                  <label htmlFor={`kategoriya-${kategoriya}`} className="ml-2 block text-sm text-gray-900">
+                    {kategoriya}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      );
+    }
+
     if (currentEntity === ENTITY_TYPES.TEXNIKI_GOSTERICILER) {
       return (
         <>
@@ -285,7 +332,7 @@ function AdminPanel() {
               required
             />
           </div>
-          
+
           <div className="mb-4">
             <h4 className="text-lg font-medium text-gray-700 mb-3">
               Parametrin Dəyərləri
@@ -332,24 +379,72 @@ function AdminPanel() {
       );
     }
 
+    if (currentEntity === ENTITY_TYPES.IP_TELEFONLAR) { // Yeni: IP Telefonlar üçün form sahələri
+      return (
+        <>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Ad (Opsional)
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name || ''}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Vəzifə
+            </label>
+            <input
+              type="text"
+              name="position"
+              value={formData.position || ''}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Telefon Nömrəsi
+            </label>
+            <input
+              type="text"
+              name="phone"
+              value={formData.phone || ''}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+          </div>
+        </>
+      );
+    }
+
+    // Printer, Monitor, Proyektor, Monoblok üçün eyni sahələr
     return commonFields;
   };
 
   const renderTableHeader = (entityType) => {
     const headers = {
-      [ENTITY_TYPES.KOMPUTERLER]: ['Korpus', 'Say', 'Qeydlər', 'Əməliyyatlar'],
+      [ENTITY_TYPES.KOMPUTERLER]: ['Korpus', 'Say', 'Kateqoriya', 'Qeydlər', 'Əməliyyatlar'],
       [ENTITY_TYPES.PRINTERLER]: ['Korpus', 'Say', 'Qeydlər', 'Əməliyyatlar'],
       [ENTITY_TYPES.MONITORLAR]: ['Korpus', 'Say', 'Qeydlər', 'Əməliyyatlar'],
       [ENTITY_TYPES.PROYEKTORLAR]: ['Korpus', 'Say', 'Qeydlər', 'Əməliyyatlar'],
-      [ENTITY_TYPES.TEXNIKI_GOSTERICILER]: ['Parametr Adı', 'Dəyərlər (Say)', 'Əməliyyatlar']
+      [ENTITY_TYPES.MONOBLOKLAR]: ['Korpus', 'Say', 'Qeydlər', 'Əməliyyatlar'],
+      [ENTITY_TYPES.TEXNIKI_GOSTERICILER]: ['Parametr Adı', 'Dəyərlər (Say)', 'Əməliyyatlar'],
+      [ENTITY_TYPES.IP_TELEFONLAR]: ['Ad', 'Vəzifə', 'Telefon', 'Əməliyyatlar'] // Yeni: IP Telefonlar başlığı
     };
 
     return (
       <thead className="bg-gray-50">
         <tr>
           {headers[entityType].map((header, index) => (
-            <th 
-              key={index} 
+            <th
+              key={index}
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               {header}
@@ -399,6 +494,23 @@ function AdminPanel() {
       );
     }
 
+    if (entityType === ENTITY_TYPES.IP_TELEFONLAR) { // Yeni: IP Telefonlar üçün cədvəl sətri
+      return (
+        <tr key={item._id} className="hover:bg-gray-50">
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            {item.name || '-'}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            {item.position || '-'}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            {item.phone || '-'}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm">{actionButtons}</td>
+        </tr>
+      );
+    }
+
     return (
       <tr key={item._id} className="hover:bg-gray-50">
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -407,6 +519,11 @@ function AdminPanel() {
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
           {item.say}
         </td>
+        {entityType === ENTITY_TYPES.KOMPUTERLER && (
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            {item.kategoriya || '-'}
+          </td>
+        )}
         <td className="px-6 py-4 text-sm text-gray-900">
           {item.qeydler || '-'}
         </td>
@@ -458,10 +575,10 @@ function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-3">
-        <button className='flex gap-1 items-center absolute right-4' onClick={()=>logout()}><LogOutIcon />Çıx</button>
+      <button onClick={()=>logout()} className='flex gap-1 absolute right-3'><LogOut/> Çıx</button>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Başlıq */}
-        <div className="text-center mb-8 mt-10">
+        <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
           <p className="mt-2 text-gray-600">Avadanlıqların idarə edilməsi sistemi</p>
         </div>
@@ -507,7 +624,7 @@ function AdminPanel() {
           <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
               <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
-              
+
               <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div className="bg-white px-6 pt-6 pb-4">
                   <div className="flex items-center justify-between mb-4">
@@ -521,10 +638,10 @@ function AdminPanel() {
                       <X size={24} />
                     </button>
                   </div>
-                  
+
                   <form onSubmit={handleSubmit}>
                     {renderFormFields()}
-                    
+
                     {ui.error && (
                       <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                         <div className="flex items-center">
@@ -533,7 +650,7 @@ function AdminPanel() {
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="flex justify-end space-x-3 pt-4 border-t">
                       <button
                         type="button"
