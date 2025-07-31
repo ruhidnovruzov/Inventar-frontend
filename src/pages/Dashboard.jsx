@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   Building2, GraduationCap, Users, DoorOpen, BookOpen, Laptop, RefreshCw,
-  AlertCircle, Monitor, Printer, Projector, Cpu, Cable, X, Phone
+  AlertCircle, Monitor, Printer, Projector, Cpu, Cable, X, Phone,
+  HardDrive // Monobloklar üçün yeni icon
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Legend, CartesianGrid, PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import PhoneTable from '../PhoneTable';
-import { phoneData } from '../PhoneData';
 
 // AnimatedCounter komponenti: Rəqəmlərin animasiyalı şəkildə artmasını təmin edir.
 function AnimatedCounter({ end, duration = 500 }) {
@@ -98,8 +98,6 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
               <RefreshCw className="h-8 w-8 text-indigo-500 animate-spin" />
               <span className="ml-2 text-lg text-gray-700">Məlumatlar yüklənir...</span>
             </div>
-          ) : data.name === 'IP telefon Sayı' ? (
-            <PhoneTable data={phoneData} />
           ) : data.name === 'Texniki göstəricilər' ? (
             <div className="space-y-4">
               {data.details && data.details.length > 0 ? (
@@ -121,17 +119,20 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
                 <p className="text-gray-600">Texniki göstəricilər mövcud deyil.</p>
               )}
             </div>
+          ) : data.name === 'IP telefon Sayı' ? ( // IP telefon Sayı üçün PhoneTable komponentini istifadə edin
+            <PhoneTable data={data.details} />
           ) : (
             <div className="space-y-4">
               {data.details && data.details.length > 0 ? (
                 // Hər bir avadanlıq obyektini göstəririk
                 data.details.map((item, index) => (
                   <div key={item._id || index} className="p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                    {/* Kompüter, Monitor, Printer, Proyektor üçün eyni şablon */}
-                    {(data.name === 'Ümumi Kompüter Sayı' || data.name === 'Ümumi Monitor Sayı' || data.name === 'Ümumi Printer Sayı' || data.name === 'Ümumi Proyektor Sayı') && (
+                    {/* Kompüter, Monitor, Printer, Proyektor, Monoblok üçün eyni şablon */}
+                    {(data.name.includes('Kompüter Sayı') || data.name.includes('Monitor Sayı') || data.name.includes('Printer Sayı') || data.name.includes('Proyektor Sayı') || data.name.includes('Monoblok Sayı')) && (
                       <>
                         <p><span className="font-medium">Korpus:</span> {item.korpus}</p>
                         <p><span className="font-medium">Say:</span> {item.say}</p>
+                        {item.kategoriya && <p><span className="font-medium">Kateqoriya:</span> {item.kategoriya}</p>}
                         {item.qeydler && <p><span className="font-medium">Qeydlər:</span> {item.qeydler}</p>}
                       </>
                     )}
@@ -139,8 +140,8 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
                     {data.name === 'Avadanlıqlar' && typeof item === 'string' && (
                       <p>{item}</p>
                     )}
-                    {/* Digər statik kartlar üçün məlumatlar */}
-                    {(data.name === 'Auditoriyalar üzrə kompüter sayı' || data.name === 'Şöbələr üzrə kompüter sayı' || data.name === 'Fakültə' || data.name === 'Kafedra' || data.name === 'Korpuslar' || data.name === 'Otaqlar' || data.name === 'İstifadəçilər') && (
+                    {/* Digər statik kartlar üçün məlumatlar (əgər hələ də statik varsa) */}
+                    {(data.name === 'Fakültə' || data.name === 'Kafedra' || data.name === 'Korpuslar' || data.name === 'Otaqlar' || data.name === 'İstifadəçilər') && (
                         typeof item === 'string' ? <p>{item}</p> : (item.name ? <p>{item.name}: {item.value}</p> : null)
                     )}
                   </div>
@@ -172,10 +173,15 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
 function Dashboard() {
   const [stats, setStats] = useState({
     common_computer_count: 0,
+    auditoriya_computer_count: 0,
+    inzibati_computer_count: 0,
+    akademik_computer_count: 0,
+    diger_computer_count: 0,
     monitor_count: 0,
     printer_count: 0,
     projector_count: 0,
-    cpu_count: 0, // İndi bütün texniki göstəricilərin cəmi olacaq
+    monoblok_count: 0,
+    cpu_count: 0,
     equipment_count: 0,
     // Toxunulmayacaq statik məlumatlar
     faculty_count: 8,
@@ -183,9 +189,10 @@ function Dashboard() {
     room_count: 30,
     corps_count: 7,
     user_count: 3,
-    tel_count: 148,
-    audotory_count_computers: 1142,
-    department_computer_count: 586,
+    tel_count: 0, // Tel count artıq dinamik olacaq
+    // Bu iki dəyişən artıq dinamik olacaq, lakin ilkin dəyərlərini saxlayırıq
+    audotory_count_computers: 0,
+    department_computer_count: 0,
   });
 
   const [shouldAnimate, setShouldAnimate] = useState(false);
@@ -198,17 +205,20 @@ function Dashboard() {
 
   const [computerChartData, setComputerChartData] = useState([]);
   const [monitorChartData, setMonitorChartData] = useState([]);
-  const [cpuChartData, setCpuChartData] = useState([]); // Texniki göstəricilər üçün qrafik datası
+  const [monoblokChartData, setMonoblokChartData] = useState([]);
+  const [cpuChartData, setCpuChartData] = useState([]);
 
   const API_BASE_URL = 'https://inventar-backend.onrender.com/api';
 
   // Auditoriya və Şöbələr arası kompüterlərin faiz fərqi üçün statik məlumat (toxunulmur)
   const auditoryDeptPieData = [
-    { name: 'Auditoriya', value: stats.audotory_count_computers },
-    { name: 'Şöbələr', value: stats.department_computer_count }
+    { name: 'Auditoriya', value: stats.auditoriya_computer_count },
+    { name: 'İnzibati', value: stats.inzibati_computer_count },
+    { name: 'Akademik', value: stats.akademik_computer_count },
+    { name: 'Digər', value: stats.diger_computer_count }
   ];
 
-  const COLORS = ['#4CAF50', '#FFC107']; // Pie chart üçün rənglər
+  const COLORS = ['#4CAF50', '#FFC107', '#00BCD4', '#E91E63']; // Pie chart üçün rənglər (daha çox kateqoriya üçün)
 
   // Məlumatları API-dən çəkən funksiya
   const fetchStats = useCallback(async () => {
@@ -224,33 +234,42 @@ function Dashboard() {
       const korpusIcmalRes = await axios.get(`${API_BASE_URL}/statistika/korpus-icmali`);
       const korpusIcmal = korpusIcmalRes.data;
 
-      // Texniki göstəricilərin ümumi sayını hesablayırıq və qrafik üçün hazırlayırıq
+      // IP Telefon sayını əlavə edin
+      const ipTelefonSayiRes = await axios.get(`${API_BASE_URL}/ip-telefonlar/count/total`);
+      const ipTelefonSayi = ipTelefonSayiRes.data.count;
+
       let totalTexnikiGostericiCount = 0;
-      const cpuChartDetails = []; // Bu, CPU qrafiki üçün istifadə olunacaq
+      const cpuChartDetails = [];
       
       texnikiGostericilerData.forEach(param => {
         param.deyerler.forEach(deyer => {
-          totalTexnikiGostericiCount += deyer.say; // Bütün texniki göstəricilərin sayını toplayırıq
-          // CPU qrafiki üçün yalnız CPU və "Digərləri" parametrlərini əlavə edirik
+          totalTexnikiGostericiCount += deyer.say;
           if (param.parametrAd === 'CPU' || param.parametrAd === 'Digərləri') {
             cpuChartDetails.push({ name: deyer.deyer, value: deyer.say });
           }
         });
       });
-      setCpuChartData(cpuChartDetails); // CPU qrafiki üçün məlumatları yeniləyirik
+      setCpuChartData(cpuChartDetails);
 
       // Məlumatları state-ə yükləyirik
       setStats(prevStats => ({
         ...prevStats,
         common_computer_count: umumiSaylarData.komputerler.umumiSay,
+        auditoriya_computer_count: umumiSaylarData.komputerler.auditoriyaSay,
+        inzibati_computer_count: umumiSaylarData.komputerler.inzibatiSay,
+        akademik_computer_count: umumiSaylarData.komputerler.akademikSay,
+        diger_computer_count: umumiSaylarData.komputerler.digerSay,
         monitor_count: umumiSaylarData.monitorlar.umumiSay,
         printer_count: umumiSaylarData.printerler.umumiSay,
         projector_count: umumiSaylarData.proyektorlar.umumiSay,
-        cpu_count: totalTexnikiGostericiCount, // Ümumi texniki göstəricilərin sayı
-        equipment_count: umumiSaylarData.komputerler.umumiSay + umumiSaylarData.monitorlar.umumiSay + umumiSaylarData.printerler.umumiSay + umumiSaylarData.proyektorlar.umumiSay + prevStats.tel_count,
+        monoblok_count: umumiSaylarData.monobloklar.umumiSay,
+        cpu_count: totalTexnikiGostericiCount,
+        tel_count: ipTelefonSayi, // Dinamik IP telefon sayı
+        equipment_count: umumiSaylarData.komputerler.umumiSay + umumiSaylarData.monitorlar.umumiSay + umumiSaylarData.printerler.umumiSay + umumiSaylarData.proyektorlar.umumiSay + umumiSaylarData.monobloklar.umumiSay + ipTelefonSayi, // Ümumi avadanlıq sayına IP telefonu əlavə edin
+        audotory_count_computers: umumiSaylarData.komputerler.auditoriyaSay,
+        department_computer_count: umumiSaylarData.komputerler.inzibatiSay + umumiSaylarData.komputerler.akademikSay + umumiSaylarData.komputerler.digerSay,
       }));
 
-      // Kompüter və Monitor qrafik məlumatlarını korpus icmalından hazırlayırıq
       const computerGraphData = korpusIcmal.map(item => ({
         name: item.korpus,
         value: item.komputerSayi
@@ -262,6 +281,12 @@ function Dashboard() {
         value: item.monitorSayi
       }));
       setMonitorChartData(monitorGraphData);
+
+      const monoblokGraphData = korpusIcmal.map(item => ({
+        name: item.korpus,
+        value: item.monoblokSayi
+      }));
+      setMonoblokChartData(monoblokGraphData);
 
       setLastUpdated(new Date());
       setShouldAnimate(false);
@@ -282,35 +307,42 @@ function Dashboard() {
   // Kartlara kliklənərkən modal məlumatlarını hazırlayan funksiya
   const handleCardClick = async (name, apiPath = null, staticDetails = []) => {
     setIsModalOpen(true);
-    setLoadingModalData(true); // Modalı yüklənmə vəziyyətinə gətir
-    setModalData({ name: name, details: [] }); // Əvvəlki məlumatları təmizlə
+    setLoadingModalData(true);
+    setModalData({ name: name, details: [] });
 
     let details = [];
 
     try {
       if (apiPath) {
-        // API-dən detalları çək
         const response = await axios.get(`${API_BASE_URL}${apiPath}`);
         details = response.data;
-
-        // "Texniki göstəricilər" üçün xüsusi işləmə (API cavabı olduğu kimi istifadə olunur)
-        // Digər avadanlıqlar (kompüter, monitor, printer, proyektor) üçün də birbaşa istifadə olunur
       } else if (name === 'Avadanlıqlar') {
-        // Avadanlıqlar üçün ümumi sayları göstər (API-dən gələn statlardan)
         details = [
           `Kompüterlər: ${stats.common_computer_count}`,
           `Monitorlar: ${stats.monitor_count}`,
           `Printerlər: ${stats.printer_count}`,
           `Proyektorlar: ${stats.projector_count}`,
-          // Bu statik məlumatları yenə də əlavə edirik, əgər API-dən gəlmirsə
-          `Anbarda olan kompüter: 327`,
-          `Ümumi IP telefon (148 Aktiv; 2 Anbar): ${stats.tel_count + 2}`
+          `Monobloklar: ${stats.monoblok_count}`,
+          `Anbarda olan kompüter: 0`,
+          `Ümumi IP telefon: ${stats.tel_count}` // Dinamik IP telefon sayını göstər
         ];
       } else if (name === 'IP telefon Sayı') {
-        // IP telefonlar üçün xüsusi PhoneTable komponenti istifadə olunur
-        details = [];
-      } else {
-        // Digər statik kartlar üçün verilən detalları istifadə et
+        const response = await axios.get(`${API_BASE_URL}/ip-telefonlar`); // IP telefon məlumatlarını çək
+        details = response.data;
+      } else if (name === 'Auditoriyalar üzrə kompüter sayı') {
+        const response = await axios.get(`${API_BASE_URL}/komputerler?kategoriya=Auditoriya`);
+        details = response.data;
+      } else if (name === 'İnzibati heyət üzrə kompüter sayı') {
+        const response = await axios.get(`${API_BASE_URL}/komputerler?kategoriya=İnzibati`);
+        details = response.data;
+      } else if (name === 'Akademik heyət üzrə kompüter sayı') {
+        const response = await axios.get(`${API_BASE_URL}/komputerler?kategoriya=Akademik`);
+        details = response.data;
+      } else if (name === 'Digər kompüter sayı') {
+        const response = await axios.get(`${API_BASE_URL}/komputerler?kategoriya=Digər`);
+        details = response.data;
+      }
+      else {
         details = staticDetails;
       }
       setModalData({ name: name, details: details });
@@ -318,25 +350,26 @@ function Dashboard() {
       console.error(`Error fetching details for ${name}:`, err);
       setModalData({ name: name, details: [`Məlumatlar yüklənərkən xəta baş verdi: ${err.message}`] });
     } finally {
-      setLoadingModalData(false); // Yüklənmə bitdi
+      setLoadingModalData(false);
     }
   };
 
 
   // Kart məlumatları
   const statsData = [
-    // Dinamik məlumatlar (API-dən çəkiləcək detallar)
     { name: 'Avadanlıqlar', count: stats.equipment_count, icon: Cable, color: 'bg-red-500', apiPath: null },
     { name: 'Ümumi Kompüter Sayı', count: stats.common_computer_count, icon: Laptop, color: 'bg-blue-500', apiPath: '/komputerler' },
+    { name: 'Ümumi Monoblok Sayı', count: stats.monoblok_count, icon: HardDrive, color: 'bg-orange-500', apiPath: '/monobloklar' },
     { name: 'Texniki göstəricilər', count: stats.cpu_count, icon: Cpu, color: 'bg-[#FF6600]', apiPath: '/statistika/texniki-gostericiler' },
     { name: 'Ümumi Monitor Sayı', count: stats.monitor_count, icon: Monitor, color: 'bg-green-500', apiPath: '/monitorlar' },
     { name: 'Ümumi Printer Sayı', count: stats.printer_count, icon: Printer, color: 'bg-purple-500', apiPath: '/printerler' },
     { name: 'Ümumi Proyektor Sayı', count: stats.projector_count, icon: Projector, color: 'bg-yellow-500', apiPath: '/proyektorlar' },
     { name: 'IP telefon Sayı', count: stats.tel_count, icon: Phone, color: 'bg-[#8FD14F]', apiPath: null },
 
-    // Toxunulmayacaq statik kartlar (detallar birbaşa `statsData`-da verilir)
-    { name: 'Auditoriyalar üzrə kompüter sayı', count: stats.audotory_count_computers, icon: Laptop, color: 'bg-blue-500', apiPath: null, details: ['1ci Korpus: 241', '2ci Korpus: 284', '3ci Korpus: 53', '4ci Korpus: 48', '5ci Korpus: 143', '6ci Korpus: 271', '7ci Korpus: 102'] },
-    { name: 'Şöbələr üzrə kompüter sayı', count: stats.department_computer_count, icon: Laptop, color: 'bg-[#6C48C5]', apiPath: null, details: ['1ci Korpus: 140', '2ci Korpus: 113', '3ci Korpus: 40', '4ci Korpus: 61', '5ci Korpus: 132', '6ci Korpus: 58', '7ci Korpus: 42'] },
+    // Yeni: Kompüter kateqoriyaları üzrə dinamik kartlar
+    { name: 'Auditoriyalar üzrə kompüter sayı', count: stats.auditoriya_computer_count, icon: Laptop, color: 'bg-teal-500', apiPath: null, details: [] },
+    { name: 'İnzibati heyət üzrə kompüter sayı', count: stats.inzibati_computer_count, icon: Laptop, color: 'bg-cyan-500', apiPath: null, details: [] },
+    { name: 'Akademik heyət üzrə kompüter sayı', count: stats.akademik_computer_count, icon: Laptop, color: 'bg-lime-500', apiPath: null, details: [] },
   ];
 
 
@@ -383,7 +416,6 @@ function Dashboard() {
                 <div
                   key={item.name}
                   className="bg-white rounded-lg cursor-pointer shadow-md overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                  // `apiPath` və `details` parametrlərini `handleCardClick` funksiyasına ötürürük
                   onClick={() => handleCardClick(item.name, item.apiPath, item.details)}
                 >
                   <div className="p-6">
@@ -426,6 +458,20 @@ function Dashboard() {
           </ResponsiveContainer>
         </div>
 
+        <div className="w-full h-96 mt-20">
+          <h2 className="text-2xl font-bold text-center mb-4">Monobloklar</h2>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monoblokChartData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis domain={[0, 'auto']} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="value" fill="#FF8C00" barSize={50} label={{ position: 'top', fill: 'black' }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
 
         <div className="w-full h-96 mt-20">
           <h2 className="text-2xl font-bold text-center mb-4">CPU Nəsillər və Saylar</h2>
@@ -457,7 +503,7 @@ function Dashboard() {
         </div>
 
         <div className="w-full h-[500px] flex flex-col items-center mt-20">
-          <h2 className="text-2xl font-bold text-center mb-4">Auditoriya və şöbələr arası kompüterlərin faiz fərqi</h2>
+          <h2 className="text-2xl font-bold text-center mb-4">Kompüter Kateqoriyaları üzrə Paylanma</h2>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -475,6 +521,7 @@ function Dashboard() {
                 ))}
               </Pie>
               <Tooltip />
+              <Legend />
             </PieChart>
           </ResponsiveContainer>
         </div>
