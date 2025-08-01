@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   PlusCircle, Edit, Trash2, X, AlertCircle, RefreshCw, Save,
-  Laptop, Printer, Monitor, Projector, Cpu, HardDrive, Phone, // Phone iconu əlavə edildi
+  Laptop, Printer, Monitor, Projector, Cpu, HardDrive, Phone,
   LogOut
 } from 'lucide-react';
 
@@ -16,7 +16,7 @@ const ENTITY_TYPES = {
   PROYEKTORLAR: 'proyektorlar',
   MONOBLOKLAR: 'monobloklar',
   TEXNIKI_GOSTERICILER: 'texniki-gostericiler',
-  IP_TELEFONLAR: 'ip-telefonlar' // Yeni: IP Telefonlar tipi
+  IP_TELEFONLAR: 'ip-telefonlar'
 };
 
 const TAB_CONFIG = [
@@ -51,7 +51,7 @@ const TAB_CONFIG = [
     icon: Cpu
   },
   {
-    key: ENTITY_TYPES.IP_TELEFONLAR, // Yeni: IP Telefonlar tabı
+    key: ENTITY_TYPES.IP_TELEFONLAR,
     label: 'IP Telefonlar',
     icon: Phone
   }
@@ -59,6 +59,17 @@ const TAB_CONFIG = [
 
 // Kompüter kateqoriyaları üçün sabit
 const KOMPUTER_KATEGORIYALARI = ['Auditoriya', 'İnzibati', 'Akademik', 'Digər'];
+
+// Korpuslar üçün nümunə sabit
+const KORPUSLAR = [
+  'I',
+  'II',
+  'III',
+  'IV',
+  'V',
+  'VI',
+  'VII'
+];
 
 
 // Yardımçı funksiyalar
@@ -78,15 +89,15 @@ function AdminPanel() {
     [ENTITY_TYPES.PROYEKTORLAR]: [],
     [ENTITY_TYPES.MONOBLOKLAR]: [],
     [ENTITY_TYPES.TEXNIKI_GOSTERICILER]: [],
-    [ENTITY_TYPES.IP_TELEFONLAR]: [] // Yeni: IP Telefonlar datası
+    [ENTITY_TYPES.IP_TELEFONLAR]: []
   });
 
   const [ui, setUi] = useState({
-    isLoading: true, // Başlanğıcda yüklənir
+    isLoading: true,
     error: null,
-    activeTab: ENTITY_TYPES.KOMPUTERLER, // İlkin aktiv tab
+    activeTab: ENTITY_TYPES.KOMPUTERLER,
     isModalOpen: false,
-    modalType: 'add', // 'add' | 'edit'
+    modalType: 'add',
     currentEntity: '',
     editingId: null
   });
@@ -94,13 +105,13 @@ function AdminPanel() {
   const [formData, setFormData] = useState({});
 
   const logout = () => {
-    localStorage.removeItem('authToken'); // Tokeni sil
-    window.location.href = '/login'; // Login səhifəsinə yönləndir
+    localStorage.removeItem('authToken');
+    window.location.href = '/login';
   }
 
   // API çağrıları
   const fetchData = useCallback(async (entityType) => {
-    setUi(prev => ({ ...prev, isLoading: true, error: null })); // Hər tab üçün yüklənməni başlat
+    setUi(prev => ({ ...prev, isLoading: true, error: null }));
     try {
       const response = await axios.get(`${API_BASE_URL}/${entityType}`);
       setData(prev => ({
@@ -114,15 +125,14 @@ function AdminPanel() {
         error: `Məlumatları yükləmək mümkün olmadı: ${entityType}`
       }));
     } finally {
-      setUi(prev => ({ ...prev, isLoading: false })); // Yüklənməni bitir
+      setUi(prev => ({ ...prev, isLoading: false }));
     }
   }, []);
 
   // İlkin yükləmə və tab dəyişdikdə məlumatları çəkmə
   useEffect(() => {
-    // Aktiv tab dəyişdikdə və ya komponent ilk yüklənəndə məlumatları çək
     fetchData(ui.activeTab);
-  }, [ui.activeTab, fetchData]); // ui.activeTab dəyişdikdə bu useEffect yenidən işə düşəcək
+  }, [ui.activeTab, fetchData]);
 
   // Form idarəetməsi
   const handleInputChange = (e) => {
@@ -173,7 +183,6 @@ function AdminPanel() {
       isModalOpen: true,
       editingId: item?._id || null
     }));
-    // Kompüter üçün kateqoriya sahəsini ilkin olaraq təyin edin
     setFormData(item ? { ...item } : (entityType === ENTITY_TYPES.KOMPUTERLER ? { kategoriya: KOMPUTER_KATEGORIYALARI[0] } : {}));
   };
 
@@ -200,11 +209,10 @@ function AdminPanel() {
         await axios.put(`${API_BASE_URL}/${currentEntity}/${editingId}`, formData);
       }
 
-      await fetchData(currentEntity); // Məlumatları yenilə
+      await fetchData(currentEntity);
       closeModal();
     } catch (err) {
       console.error(`Error submitting ${ui.currentEntity}:`, err);
-      // Backend-dən gələn xəta mesajını göstər
       const errorMessage = err.response?.data?.message || err.message;
       setUi(prev => ({
         ...prev,
@@ -216,6 +224,8 @@ function AdminPanel() {
   };
 
   const handleDelete = async (entityType, id) => {
+    // window.confirm istifadə etmək əvəzinə xüsusi bir modaldan istifadə edin
+    // Çünki bu, iframe mühitində düzgün işləməyə bilər.
     if (!window.confirm('Bu elementi silmək istədiyinizə əminsiniz?')) {
       return;
     }
@@ -223,7 +233,7 @@ function AdminPanel() {
     try {
       setUi(prev => ({ ...prev, isLoading: true }));
       await axios.delete(`${API_BASE_URL}/${entityType}/${id}`);
-      await fetchData(entityType); // Məlumatları yenilə
+      await fetchData(entityType);
     } catch (err) {
       console.error(`Error deleting ${entityType}:`, err);
       const errorMessage = err.response?.data?.message || err.message;
@@ -242,18 +252,28 @@ function AdminPanel() {
 
     const commonFields = (
       <>
+        {/* Korpus input-u select-lə əvəz edildi */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Korpus
           </label>
-          <input
-            type="text"
+          <select
             name="korpus"
             value={formData.korpus || ''}
             onChange={handleInputChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
-          />
+          >
+            {/* Boş bir seçim üçün placeholder */}
+            <option value="" disabled>Korpusu seçin</option>
+            {/* Sabit korpuslar siyahısından seçimlər yaradılır.
+                Real tətbiqlərdə bu məlumatlar API-dan gəlməlidir. */}
+            {KORPUSLAR.map((korpusOption) => (
+              <option key={korpusOption} value={korpusOption}>
+                {korpusOption}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -379,7 +399,7 @@ function AdminPanel() {
       );
     }
 
-    if (currentEntity === ENTITY_TYPES.IP_TELEFONLAR) { // Yeni: IP Telefonlar üçün form sahələri
+    if (currentEntity === ENTITY_TYPES.IP_TELEFONLAR) {
       return (
         <>
           <div className="mb-4">
@@ -424,7 +444,6 @@ function AdminPanel() {
       );
     }
 
-    // Printer, Monitor, Proyektor, Monoblok üçün eyni sahələr
     return commonFields;
   };
 
@@ -436,7 +455,7 @@ function AdminPanel() {
       [ENTITY_TYPES.PROYEKTORLAR]: ['Korpus', 'Say', 'Qeydlər', 'Əməliyyatlar'],
       [ENTITY_TYPES.MONOBLOKLAR]: ['Korpus', 'Say', 'Qeydlər', 'Əməliyyatlar'],
       [ENTITY_TYPES.TEXNIKI_GOSTERICILER]: ['Parametr Adı', 'Dəyərlər (Say)', 'Əməliyyatlar'],
-      [ENTITY_TYPES.IP_TELEFONLAR]: ['Ad', 'Vəzifə', 'Telefon', 'Əməliyyatlar'] // Yeni: IP Telefonlar başlığı
+      [ENTITY_TYPES.IP_TELEFONLAR]: ['Ad', 'Vəzifə', 'Telefon', 'Əməliyyatlar']
     };
 
     return (
@@ -494,7 +513,7 @@ function AdminPanel() {
       );
     }
 
-    if (entityType === ENTITY_TYPES.IP_TELEFONLAR) { // Yeni: IP Telefonlar üçün cədvəl sətri
+    if (entityType === ENTITY_TYPES.IP_TELEFONLAR) {
       return (
         <tr key={item._id} className="hover:bg-gray-50">
           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
