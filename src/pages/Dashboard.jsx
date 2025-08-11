@@ -353,18 +353,17 @@ function Dashboard() {
             const ipTelefonSayi = ipTelefonSayiRes.data.count;
 
             let totalTexnikiGostericiCount = 0;
-            const cpuChartDetails = [];
-
-            texnikiGostericilerData.forEach(param => {
-                param.deyerler.forEach(deyer => {
-                    totalTexnikiGostericiCount += deyer.say;
-                    if (param.parametrAd === 'CPU' || param.parametrAd === 'Digərləri') {
-                        cpuChartDetails.push({ name: deyer.deyer, value: deyer.say });
-                    }
-                });
-            });
-            setCpuChartData(cpuChartDetails);
-
+           const cpuChartDetails = [];
+texnikiGostericilerData.forEach(param => {
+    // Hər bir nəsil üçün (parametrAd) chart-a əlavə et
+    if (param.deyerler && param.deyerler.length > 0) {
+        cpuChartDetails.push({
+            name: param.parametrAd,
+            value: param.deyerler.reduce((sum, d) => sum + d.say, 0)
+        });
+    }
+});
+setCpuChartData(cpuChartDetails);
             // Məlumatları state-ə yükləyirik
             setStats(prevStats => ({
                 ...prevStats,
@@ -472,7 +471,7 @@ function Dashboard() {
     const statsData = [
         { name: 'Avadanlıqlar', count: stats.equipment_count, icon: Cable, color: 'bg-red-500', apiPath: null },
         { name: 'Ümumi Kompüter Sayı', count: stats.common_computer_count, icon: Laptop, color: 'bg-blue-500', apiPath: '/komputerler' },
-        { name: 'Ümumi Monoblok Sayı', count: stats.monoblok_count, icon: HardDrive, color: 'bg-orange-500', apiPath: '/monobloklar' },
+        { name: 'Ümumi Monoblok Sayı', count: stats.monoblok_count, icon: HardDrive, color: 'bg-[#8E24AA]', apiPath: '/monobloklar' },
         { name: 'Texniki göstəricilər', count: stats.cpu_count, icon: Cpu, color: 'bg-[#FF6600]', apiPath: '/statistika/texniki-gostericiler' },
         { name: 'Ümumi Monitor Sayı', count: stats.monitor_count, icon: Monitor, color: 'bg-green-500', apiPath: '/monitorlar' },
         { name: 'Ümumi Printer Sayı', count: stats.printer_count, icon: Printer, color: 'bg-purple-500', apiPath: '/printerler' },
@@ -597,7 +596,7 @@ function Dashboard() {
                             <YAxis domain={[0, 'auto']} />
                             <Tooltip />
                             <Legend />
-                            <Bar dataKey="value" fill="#FF6600" barSize={50} label={{ position: 'top', fill: 'black' }} />
+                            <Bar dataKey="value" fill="#8E24AA" barSize={50} label={{ position: 'top', fill: 'black' }} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
