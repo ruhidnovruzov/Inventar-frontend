@@ -58,7 +58,7 @@ const TAB_CONFIG = [
 ];
 
 // Kompüter kateqoriyaları üçün sabit
-const KOMPUTER_KATEGORIYALARI = ['Auditoriya', 'İnzibati', 'Akademik', 'Digər'];
+const KOMPUTER_KATEGORIYALARI = ['Auditoriya', 'İnzibati', 'Akademik', 'Laboratoriya', 'Digər'];
 
 // Korpuslar üçün nümunə sabit
 const KORPUSLAR = [
