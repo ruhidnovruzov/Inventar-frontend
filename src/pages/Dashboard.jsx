@@ -330,7 +330,6 @@ function Dashboard() {
         { name: 'İnzibati', value: stats.inzibati_computer_count },
         { name: 'Akademik', value: stats.akademik_computer_count },
         { name: 'Laboratoriya', value: stats.laboratoriya_computer_count || 0 }, // Laboratoriya kompüterləri üçün əlavə kateqoriya
-        { name: 'Digər', value: stats.diger_computer_count }
     ];
 
     const COLORS = ['#4CAF50', '#FFC107', '#00BCD4', '#E91E63']; // Pie chart üçün rənglər (daha çox kateqoriya üçün)
@@ -618,7 +617,7 @@ function Dashboard() {
                     </ResponsiveContainer>
                 </div>
 
-                <div className="w-full h-[500px] flex flex-col items-center mt-20">
+                <div className="w-full h-[550px] flex flex-col items-center mt-20">
                     <h2 className="text-2xl font-bold text-center mb-4">Kompüter Kateqoriyaları üzrə Paylanma</h2>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
