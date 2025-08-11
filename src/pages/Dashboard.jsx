@@ -323,6 +323,7 @@ function Dashboard() {
     const [cpuChartData, setCpuChartData] = useState([]);
 
     const API_BASE_URL = 'https://inventar-backend.onrender.com/api';
+    // const API_BASE_URL = 'http://localhost:5000/api'; // Lokal inkişaf üçün
 
     // Auditoriya və Şöbələr arası kompüterlərin faiz fərqi üçün statik məlumat (toxunulmur)
     const auditoryDeptPieData = [
@@ -335,54 +336,60 @@ function Dashboard() {
     const COLORS = ['#4CAF50', '#FFC107', '#00BCD4', '#E91E63']; // Pie chart üçün rənglər (daha çox kateqoriya üçün)
 
     // Məlumatları API-dən çəkən funksiya
-    const fetchStats = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const umumiSaylarRes = await axios.get(`${API_BASE_URL}/statistika/umumi-saylar`);
-            const umumiSaylarData = umumiSaylarRes.data;
+// ...existing code...
+const fetchStats = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+        const umumiSaylarRes = await axios.get(`${API_BASE_URL}/statistika/umumi-saylar`);
+        const umumiSaylarData = umumiSaylarRes.data;
 
-            const texnikiGostericilerRes = await axios.get(`${API_BASE_URL}/statistika/texniki-gostericiler`);
-            const texnikiGostericilerData = texnikiGostericilerRes.data;
+        const texnikiGostericilerRes = await axios.get(`${API_BASE_URL}/statistika/texniki-gostericiler`);
+        const texnikiGostericilerData = texnikiGostericilerRes.data;
 
-            const korpusIcmalRes = await axios.get(`${API_BASE_URL}/statistika/korpus-icmali`);
-            const korpusIcmal = korpusIcmalRes.data;
+        const korpusIcmalRes = await axios.get(`${API_BASE_URL}/statistika/korpus-icmali`);
+        const korpusIcmal = korpusIcmalRes.data;
 
-            // IP Telefon sayını əlavə edin
-            const ipTelefonSayiRes = await axios.get(`${API_BASE_URL}/ip-telefonlar/count/total`);
-            const ipTelefonSayi = ipTelefonSayiRes.data.count;
+        // IP Telefon sayını əlavə edin
+        const ipTelefonSayiRes = await axios.get(`${API_BASE_URL}/ip-telefonlar/count/total`);
+        const ipTelefonSayi = ipTelefonSayiRes.data.count;
 
-            let totalTexnikiGostericiCount = 0;
-           const cpuChartDetails = [];
-texnikiGostericilerData.forEach(param => {
-    // Hər bir nəsil üçün (parametrAd) chart-a əlavə et
-    if (param.deyerler && param.deyerler.length > 0) {
-        cpuChartDetails.push({
-            name: param.parametrAd,
-            value: param.deyerler.reduce((sum, d) => sum + d.say, 0)
+        // Texniki göstəricilərin ümumi sayını düzgün götür
+        const totalTexnikiGostericiCount =
+            umumiSaylarData?.texnikiGostericiler?.umumiSay || 0;
+
+        const cpuChartDetails = [];
+        texnikiGostericilerData.forEach(param => {
+            if (param.deyerler && param.deyerler.length > 0) {
+                cpuChartDetails.push({
+                    name: param.parametrAd,
+                    value: param.deyerler.reduce((sum, d) => sum + d.say, 0)
+                });
+            }
         });
-    }
-});
-setCpuChartData(cpuChartDetails);
-            // Məlumatları state-ə yükləyirik
-            setStats(prevStats => ({
-                ...prevStats,
-                common_computer_count: umumiSaylarData.komputerler.umumiSay,
-                auditoriya_computer_count: umumiSaylarData.komputerler.auditoriyaSay,
-                inzibati_computer_count: umumiSaylarData.komputerler.inzibatiSay,
-                akademik_computer_count: umumiSaylarData.komputerler.akademikSay,
-                laboratoriya_computer_count: umumiSaylarData.komputerler.laboratoriyaSay || 0, // Laboratoriya kompüterləri üçün əlavə kateqoriya
-                diger_computer_count: umumiSaylarData.komputerler.digerSay,
-                monitor_count: umumiSaylarData.monitorlar.umumiSay,
-                printer_count: umumiSaylarData.printerler.umumiSay,
-                projector_count: umumiSaylarData.proyektorlar.umumiSay,
-                monoblok_count: umumiSaylarData.monobloklar.umumiSay,
-                cpu_count: totalTexnikiGostericiCount,
-                tel_count: ipTelefonSayi, // Dinamik IP telefon sayı
-                equipment_count: umumiSaylarData.komputerler.umumiSay + umumiSaylarData.monitorlar.umumiSay + umumiSaylarData.printerler.umumiSay + umumiSaylarData.proyektorlar.umumiSay + umumiSaylarData.monobloklar.umumiSay + ipTelefonSayi, // Ümumi avadanlıq sayına IP telefonu əlavə edin
-                audotory_count_computers: umumiSaylarData.komputerler.auditoriyaSay,
-                department_computer_count: umumiSaylarData.komputerler.inzibatiSay + umumiSaylarData.komputerler.akademikSay + umumiSaylarData.komputerler.digerSay,
-            }));
+        setCpuChartData(cpuChartDetails);
+
+        setStats(prevStats => ({
+            ...prevStats,
+            common_computer_count: umumiSaylarData.komputerler.umumiSay,
+            auditoriya_computer_count: umumiSaylarData.komputerler.auditoriyaSay,
+            inzibati_computer_count: umumiSaylarData.komputerler.inzibatiSay,
+            akademik_computer_count: umumiSaylarData.komputerler.akademikSay,
+            laboratoriya_computer_count: umumiSaylarData.komputerler.laboratoriyaSay || 0,
+            diger_computer_count: umumiSaylarData.komputerler.digerSay,
+            monitor_count: umumiSaylarData.monitorlar.umumiSay,
+            printer_count: umumiSaylarData.printerler.umumiSay,
+            projector_count: umumiSaylarData.proyektorlar.umumiSay,
+            monoblok_count: umumiSaylarData.monobloklar.umumiSay,
+            cpu_count: totalTexnikiGostericiCount, // Düzgün say burada!
+            tel_count: ipTelefonSayi,
+            equipment_count: umumiSaylarData.komputerler.umumiSay + umumiSaylarData.monitorlar.umumiSay + umumiSaylarData.printerler.umumiSay + umumiSaylarData.proyektorlar.umumiSay + umumiSaylarData.monobloklar.umumiSay + ipTelefonSayi,
+            audotory_count_computers: umumiSaylarData.komputerler.auditoriyaSay,
+            department_computer_count: umumiSaylarData.komputerler.inzibatiSay + umumiSaylarData.komputerler.akademikSay + umumiSaylarData.komputerler.digerSay,
+        }));
+
+        // ...existing code...
+// ...existing code...
 
             const computerGraphData = korpusIcmal.map(item => ({
                 name: item.korpus,
