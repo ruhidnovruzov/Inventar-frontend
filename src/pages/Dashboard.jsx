@@ -157,7 +157,7 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
         // YENİ: Prosessorları istənilən ardıcıllıqla sıralamaq üçün yeni funksiya.
         const sortProcessors = (details) => {
             // Prioritet sıralama
-            const order = ["Core i7", "Core i5", "Core i3"];
+            const order = ["Core i7", "Core i5", "Core i3", "Intel Pentium Dual-Core", "İntel Pentium", "İntel Celeron"];
             
             return [...details].sort((a, b) => {
                 const indexA = order.indexOf(a.parametrAd);
@@ -182,9 +182,27 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
             <div className="space-y-4">
                 {sortedDetails.map((param, index) => {
                     // Parametr adına görə rəng təyin edin
-                    const isGreen = param.parametrAd === 'Core i7' || param.parametrAd === 'Core i5' || param.parametrAd === 'Core i3';
-                    const borderColor = isGreen ? 'border-green-500' : 'border-red-500';
-
+                    let borderColor;
+                    switch (param.parametrAd) {
+                        case 'Core i7':
+                        case 'Core i5':
+                        case 'Core i3':
+                            borderColor = 'border-green-500';
+                            break;
+                        case 'Intel Pentium Dual-Core':
+                            borderColor = 'border-amber-500'; 
+                            break;
+                        case 'İntel Pentium':
+                            borderColor = 'border-orange-500';
+                            break;
+                        case 'İntel Celeron':
+                            borderColor = 'border-red-500';
+                            break;
+                        default:
+                            borderColor = 'border-gray-300';
+                            break;
+                    }
+                    
                     return (
                         <div
                             key={index}
@@ -425,7 +443,7 @@ function Dashboard() {
                     `Ümumi IP telefon: ${stats.tel_count}` // Dinamik IP telefon sayını göstər
                 ];
             } else if (name.includes('Ümumi Monoblok Sayı')) { // Bu sətiri əlavə etdim
-                const response = await axios.get(`${API_BASE_URL}/monobloklar`); 
+                const response = await axios.get(`${API_BASE_URL}/monobloklar`);
                 details = response.data;
             } else if (name === 'IP telefon Sayı') {
                 const response = await axios.get(`${API_BASE_URL}/ip-telefonlar`); // IP telefon məlumatlarını çək
