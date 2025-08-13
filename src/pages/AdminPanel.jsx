@@ -72,7 +72,7 @@ const PRODUCT_LIST = [
     'Klaviatura', 'Siçan (Mouse)', 'Vebkamera', 'Qulaqlıq (Headset)', 'Mikrofon',
     'Printer', 'Skaner', 'UPS (Fasiləsiz enerji təminatı)', 'Lazer Göstərici',
     'HDMI Kabel', 'VGA Kabel', 'Ethernet Kabel (CAT6, CAT5)', 'USB Kabel (Type-A, Type-C, Micro-USB)',
-    'Enerji adapteri', 'Kabel bağlayıcı (Cable Tie)', 'Termopasta'
+    'Enerji adapteri', 'Kabel bağlayıcı (Cable Tie)', 'Termopasta', 'Kompüter dəsti','Sistem Bloku'
 ];
 
 // Kompüter və Monoblok kateqoriyaları üçün sabit
