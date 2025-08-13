@@ -4,11 +4,11 @@ import { Phone, Building2, User, Search } from 'lucide-react';
 const PhoneTable = ({ data }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredData = data.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.phone.includes(searchTerm)
-  );
+const filteredData = data.filter(item =>
+  item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  item.position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  item.phone?.includes(searchTerm)
+);
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">

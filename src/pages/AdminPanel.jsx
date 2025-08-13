@@ -16,7 +16,8 @@ const ENTITY_TYPES = {
     PROYEKTORLAR: 'proyektorlar',
     MONOBLOKLAR: 'monobloklar',
     TEXNIKI_GOSTERICILER: 'texniki-gostericiler',
-    IP_TELEFONLAR: 'ip-telefonlar'
+    IP_TELEFONLAR: 'ip-telefonlar',
+    WAREHOUSE: 'anbar' // Yeni əlavə
 };
 
 const TAB_CONFIG = [
@@ -54,7 +55,24 @@ const TAB_CONFIG = [
         key: ENTITY_TYPES.IP_TELEFONLAR,
         label: 'IP Telefonlar',
         icon: Phone
+    },
+    {
+        key: ENTITY_TYPES.WAREHOUSE,
+        label: 'Anbar',
+        icon: HardDrive // istəsən başqa icon seç
     }
+];
+
+const PRODUCT_LIST = [
+    'Server', 'Noutbuk', 'Desktop Kompüter', 'Monoblok (All-in-One)', 'Mini PC',
+    'Tablet', 'Monitor', 'Router', 'Switch', 'Modem', 'Firewall', 'Access Point',
+    'IP Telefon', 'Patch Panel', 'Sərt Disk (HDD, SSD)', 'Xarici Sərt Disk (External HDD)',
+    'Ana plata (Motherboard)', 'Prosessor (CPU)', 'Operativ yaddaş (RAM)',
+    'Videokart (GPU)', 'Qida bloku (PSU)', 'Korpus', 'Soyuducu (CPU Cooler)',
+    'Klaviatura', 'Siçan (Mouse)', 'Vebkamera', 'Qulaqlıq (Headset)', 'Mikrofon',
+    'Printer', 'Skaner', 'UPS (Fasiləsiz enerji təminatı)', 'Lazer Göstərici',
+    'HDMI Kabel', 'VGA Kabel', 'Ethernet Kabel (CAT6, CAT5)', 'USB Kabel (Type-A, Type-C, Micro-USB)',
+    'Enerji adapteri', 'Kabel bağlayıcı (Cable Tie)', 'Termopasta'
 ];
 
 // Kompüter və Monoblok kateqoriyaları üçün sabit
@@ -437,6 +455,57 @@ function AdminPanel() {
             );
         }
 
+        if (currentEntity === ENTITY_TYPES.WAREHOUSE) {
+            return (
+                <>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Malın Adı
+                        </label>
+                        <select
+                            name="malinAdi"
+                            value={formData.malinAdi || ''}
+                            onChange={handleInputChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required
+                        >
+                            <option value="" disabled>Malı seçin</option>
+                            {PRODUCT_LIST.map((mal) => (
+                                <option key={mal} value={mal}>{mal}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Say
+                        </label>
+                        <input
+                            type="number"
+                            name="say"
+                            value={formData.say || 0}
+                            onChange={handleInputChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required
+                            min="0"
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Qeydlər
+                        </label>
+                        <textarea
+                            name="qeydler"
+                            value={formData.qeydler || ''}
+                            onChange={handleInputChange}
+                            rows="3"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+                </>
+            );
+        }
+
+
         return commonFields;
     };
 
@@ -448,7 +517,9 @@ function AdminPanel() {
             [ENTITY_TYPES.PROYEKTORLAR]: ['Korpus', 'Say', 'Qeydlər', 'Əməliyyatlar'],
             [ENTITY_TYPES.MONOBLOKLAR]: ['Korpus', 'Say', 'Kateqoriya', 'Qeydlər', 'Əməliyyatlar'],
             [ENTITY_TYPES.TEXNIKI_GOSTERICILER]: ['Parametr Adı', 'Dəyərlər (Say)', 'Əməliyyatlar'],
-            [ENTITY_TYPES.IP_TELEFONLAR]: ['Ad', 'Vəzifə', 'Telefon', 'Əməliyyatlar']
+            [ENTITY_TYPES.IP_TELEFONLAR]: ['Ad', 'Vəzifə', 'Telefon', 'Əməliyyatlar'],
+            [ENTITY_TYPES.WAREHOUSE]: ['Malın Adı', 'Say', 'Qeydlər', 'Tarix', 'Əməliyyatlar']
+
         };
 
         return (
@@ -522,6 +593,18 @@ function AdminPanel() {
                 </tr>
             );
         }
+
+         if (entityType === ENTITY_TYPES.WAREHOUSE) {
+        return (
+            <tr key={item._id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.malinAdi}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.say}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{item.qeydler || '-'}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{item.tarix ? new Date(item.tarix).toLocaleDateString() : '-'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">{actionButtons}</td>
+            </tr>
+        );
+    }
 
         return (
             <tr key={item._id} className="hover:bg-gray-50">

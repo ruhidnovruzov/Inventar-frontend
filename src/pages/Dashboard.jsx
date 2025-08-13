@@ -134,7 +134,29 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
                 })}
             </div>
         );
-    } else if (data.name.includes('kompüter sayı') || data.name.includes('Monitor Sayı') || data.name.includes('Printer Sayı') || data.name.includes('Proyektor Sayı')) {
+    }
+
+    else if (
+        (data.name === 'Anbarda olan məhsullar' || data.name.includes('Anbar')) &&
+        data.details && data.details.length > 0
+    ) {
+        modalContent = (
+            <div className="space-y-4">
+                {data.details.map((item, index) => (
+                    <div key={item._id || index} className="p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors space-y-1">
+                        <p className="text-xl font-semibold text-gray-800">
+                            Məhsulun adı: {item.malinAdi}
+                        </p>
+                        <p className="text-sm text-gray-900">
+                            Say: {item.say} ədəd
+                        </p>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    else if (data.name.includes('kompüter sayı') || data.name.includes('Monitor Sayı') || data.name.includes('Printer Sayı') || data.name.includes('Proyektor Sayı')) {
         // Kateqoriya kompüterləri və digər avadanlıqlar üçün sadə render
         modalContent = (
             <div className="space-y-4">
@@ -158,7 +180,7 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
         const sortProcessors = (details) => {
             // Prioritet sıralama
             const order = ["Core i7", "Core i5", "Core i3", "Intel Pentium Dual-Core", "İntel Pentium", "İntel Celeron"];
-            
+
             return [...details].sort((a, b) => {
                 const indexA = order.indexOf(a.parametrAd);
                 const indexB = order.indexOf(b.parametrAd);
@@ -175,7 +197,7 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
                 return a.parametrAd.localeCompare(b.parametrAd);
             });
         };
-        
+
         const sortedDetails = sortProcessors(data.details);
 
         modalContent = (
@@ -190,7 +212,7 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
                             borderColor = 'border-green-500';
                             break;
                         case 'Intel Pentium Dual-Core':
-                            borderColor = 'border-amber-500'; 
+                            borderColor = 'border-amber-500';
                             break;
                         case 'İntel Pentium':
                             borderColor = 'border-orange-500';
@@ -202,7 +224,7 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
                             borderColor = 'border-gray-300';
                             break;
                     }
-                    
+
                     return (
                         <div
                             key={index}
@@ -241,7 +263,8 @@ function Modal({ isOpen, onClose, data, loadingModalData }) {
                 ))}
             </div>
         );
-    } else {
+    }
+    else {
         modalContent = <p className="text-gray-600">Detallı məlumat yoxdur.</p>;
     }
 
@@ -323,7 +346,7 @@ function Dashboard() {
     const [cpuChartData, setCpuChartData] = useState([]);
 
     const API_BASE_URL = 'https://inventar-backend.onrender.com/api';
-    // const API_BASE_URL = 'http://localhost:5000/api'; // Lokal inkişaf üçün
+    // const API_BASE_URL = 'https://inventar-backend.onrender.com/api'; // Lokal inkişaf üçün
 
     // Auditoriya və Şöbələr arası kompüterlərin faiz fərqi üçün statik məlumat (toxunulmur)
     const auditoryDeptPieData = [
@@ -336,60 +359,64 @@ function Dashboard() {
     const COLORS = ['#4CAF50', '#FFC107', '#00BCD4', '#E91E63']; // Pie chart üçün rənglər (daha çox kateqoriya üçün)
 
     // Məlumatları API-dən çəkən funksiya
-// ...existing code...
-const fetchStats = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-        const umumiSaylarRes = await axios.get(`${API_BASE_URL}/statistika/umumi-saylar`);
-        const umumiSaylarData = umumiSaylarRes.data;
+    // ...existing code...
+    const fetchStats = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const umumiSaylarRes = await axios.get(`${API_BASE_URL}/statistika/umumi-saylar`);
+            const umumiSaylarData = umumiSaylarRes.data;
 
-        const texnikiGostericilerRes = await axios.get(`${API_BASE_URL}/statistika/texniki-gostericiler`);
-        const texnikiGostericilerData = texnikiGostericilerRes.data;
+            const texnikiGostericilerRes = await axios.get(`${API_BASE_URL}/statistika/texniki-gostericiler`);
+            const texnikiGostericilerData = texnikiGostericilerRes.data;
 
-        const korpusIcmalRes = await axios.get(`${API_BASE_URL}/statistika/korpus-icmali`);
-        const korpusIcmal = korpusIcmalRes.data;
+            const korpusIcmalRes = await axios.get(`${API_BASE_URL}/statistika/korpus-icmali`);
+            const korpusIcmal = korpusIcmalRes.data;
 
-        // IP Telefon sayını əlavə edin
-        const ipTelefonSayiRes = await axios.get(`${API_BASE_URL}/ip-telefonlar/count/total`);
-        const ipTelefonSayi = ipTelefonSayiRes.data.count;
+            // IP Telefon sayını əlavə edin
+            const ipTelefonSayiRes = await axios.get(`${API_BASE_URL}/ip-telefonlar/count/total`);
+            const ipTelefonSayi = ipTelefonSayiRes.data.count;
 
-        // Texniki göstəricilərin ümumi sayını düzgün götür
-        const totalTexnikiGostericiCount =
-            umumiSaylarData?.texnikiGostericiler?.umumiSay || 0;
+            // Texniki göstəricilərin ümumi sayını düzgün götür
+            const totalTexnikiGostericiCount =
+                umumiSaylarData?.texnikiGostericiler?.umumiSay || 0;
 
-        const cpuChartDetails = [];
-        texnikiGostericilerData.forEach(param => {
-            if (param.deyerler && param.deyerler.length > 0) {
-                cpuChartDetails.push({
-                    name: param.parametrAd,
-                    value: param.deyerler.reduce((sum, d) => sum + d.say, 0)
-                });
-            }
-        });
-        setCpuChartData(cpuChartDetails);
+            const anbarSayi = umumiSaylarData.anbar?.umumiSay || 0;
 
-        setStats(prevStats => ({
-            ...prevStats,
-            common_computer_count: umumiSaylarData.komputerler.umumiSay,
-            auditoriya_computer_count: umumiSaylarData.komputerler.auditoriyaSay,
-            inzibati_computer_count: umumiSaylarData.komputerler.inzibatiSay,
-            akademik_computer_count: umumiSaylarData.komputerler.akademikSay,
-            laboratoriya_computer_count: umumiSaylarData.komputerler.laboratoriyaSay || 0,
-            diger_computer_count: umumiSaylarData.komputerler.digerSay,
-            monitor_count: umumiSaylarData.monitorlar.umumiSay,
-            printer_count: umumiSaylarData.printerler.umumiSay,
-            projector_count: umumiSaylarData.proyektorlar.umumiSay,
-            monoblok_count: umumiSaylarData.monobloklar.umumiSay,
-            cpu_count: totalTexnikiGostericiCount, // Düzgün say burada!
-            tel_count: ipTelefonSayi,
-            equipment_count: umumiSaylarData.komputerler.umumiSay + umumiSaylarData.monitorlar.umumiSay + umumiSaylarData.printerler.umumiSay + umumiSaylarData.proyektorlar.umumiSay + umumiSaylarData.monobloklar.umumiSay + ipTelefonSayi,
-            audotory_count_computers: umumiSaylarData.komputerler.auditoriyaSay,
-            department_computer_count: umumiSaylarData.komputerler.inzibatiSay + umumiSaylarData.komputerler.akademikSay + umumiSaylarData.komputerler.digerSay,
-        }));
 
-        // ...existing code...
-// ...existing code...
+            const cpuChartDetails = [];
+            texnikiGostericilerData.forEach(param => {
+                if (param.deyerler && param.deyerler.length > 0) {
+                    cpuChartDetails.push({
+                        name: param.parametrAd,
+                        value: param.deyerler.reduce((sum, d) => sum + d.say, 0)
+                    });
+                }
+            });
+            setCpuChartData(cpuChartDetails);
+
+            setStats(prevStats => ({
+                ...prevStats,
+                common_computer_count: umumiSaylarData.komputerler.umumiSay,
+                auditoriya_computer_count: umumiSaylarData.komputerler.auditoriyaSay,
+                inzibati_computer_count: umumiSaylarData.komputerler.inzibatiSay,
+                akademik_computer_count: umumiSaylarData.komputerler.akademikSay,
+                laboratoriya_computer_count: umumiSaylarData.komputerler.laboratoriyaSay || 0,
+                diger_computer_count: umumiSaylarData.komputerler.digerSay,
+                monitor_count: umumiSaylarData.monitorlar.umumiSay,
+                printer_count: umumiSaylarData.printerler.umumiSay,
+                projector_count: umumiSaylarData.proyektorlar.umumiSay,
+                monoblok_count: umumiSaylarData.monobloklar.umumiSay,
+                cpu_count: totalTexnikiGostericiCount, // Düzgün say burada!
+                tel_count: ipTelefonSayi,
+                anbar_count: anbarSayi, // YENİ: Anbar sayını state-ə əlavə et
+                equipment_count: umumiSaylarData.komputerler.umumiSay + umumiSaylarData.monitorlar.umumiSay + umumiSaylarData.printerler.umumiSay + umumiSaylarData.proyektorlar.umumiSay + umumiSaylarData.monobloklar.umumiSay + ipTelefonSayi,
+                audotory_count_computers: umumiSaylarData.komputerler.auditoriyaSay,
+                department_computer_count: umumiSaylarData.komputerler.inzibatiSay + umumiSaylarData.komputerler.akademikSay + umumiSaylarData.komputerler.digerSay,
+            }));
+
+            // ...existing code...
+            // ...existing code...
 
             const computerGraphData = korpusIcmal.map(item => ({
                 name: item.korpus,
@@ -426,6 +453,7 @@ const fetchStats = useCallback(async () => {
     }, [fetchStats]);
 
     // Kartlara kliklənərkən modal məlumatlarını hazırlayan funksiya
+    // handleCardClick funksiyasının içində
     const handleCardClick = async (name, apiPath = null, staticDetails = []) => {
         setIsModalOpen(true);
         setLoadingModalData(true);
@@ -440,21 +468,24 @@ const fetchStats = useCallback(async () => {
             } else if (name === 'Avadanlıqlar') {
                 details = [
                     `Kompüterlər: ${stats.common_computer_count}`,
+                    `Monobloklar: ${stats.monoblok_count}`,
                     `Monitorlar: ${stats.monitor_count}`,
                     `Printerlər: ${stats.printer_count}`,
                     `Proyektorlar: ${stats.projector_count}`,
-                    `Monobloklar: ${stats.monoblok_count}`,
-                    `Anbarda olan kompüter: 0`,
-                    `Ümumi IP telefon: ${stats.tel_count}` // Dinamik IP telefon sayını göstər
+                    `IP telefon: ${stats.tel_count}`,
+                    `Anbarda olan məhsullar: ${stats.anbar_count}`, // YENİ: Anbar sayını Avadanlıqlar modalına əlavə et
                 ];
-            } else if (name.includes('Ümumi Monoblok Sayı')) { // Bu sətiri əlavə etdim
+            } else if (name === 'Anbarda olan məhsullar') {
+                const response = await axios.get(`${API_BASE_URL}/anbar`);
+                details = response.data;
+            }
+            else if (name.includes('Ümumi Monoblok Sayı')) {
                 const response = await axios.get(`${API_BASE_URL}/monobloklar`);
                 details = response.data;
             } else if (name === 'IP telefon Sayı') {
-                const response = await axios.get(`${API_BASE_URL}/ip-telefonlar`); // IP telefon məlumatlarını çək
+                const response = await axios.get(`${API_BASE_URL}/ip-telefonlar`);
                 details = response.data;
             }
-            // Bu hissəni düzəldirik. Artıq `kategoriya` parametrinə görə sorğu göndəririk.
             else if (name.includes('kompüter sayı')) {
                 const kategoriya = name.split(' ')[0].replace('Auditoriya otaqları üzrə kompüter', 'Auditoriya').replace('İnzibati heyət üzrə kompüter', 'İnzibati').replace('Akademik heyət üzrə kompüter', 'Akademik').replace('Ümumi', '');
                 const kategoriyaParam = kategoriya.trim() === '' ? '' : `?kategoriya=${kategoriya.trim()}`;
@@ -473,7 +504,6 @@ const fetchStats = useCallback(async () => {
         }
     };
 
-
     // Kart məlumatları
     const statsData = [
         { name: 'Avadanlıqlar', count: stats.equipment_count, icon: Cable, color: 'bg-red-500', apiPath: null },
@@ -491,6 +521,8 @@ const fetchStats = useCallback(async () => {
         { name: 'Laboratoriya otaqları üzrə kompüter sayı', count: stats.laboratoriya_computer_count || 0, icon: Laptop, color: 'bg-purple-600', apiPath: null, details: [] },
         { name: 'İnzibati heyət üzrə kompüter sayı', count: stats.inzibati_computer_count, icon: Laptop, color: 'bg-cyan-500', apiPath: null, details: [] },
         { name: 'Akademik heyət üzrə kompüter sayı', count: stats.akademik_computer_count, icon: Laptop, color: 'bg-lime-500', apiPath: null, details: [] },
+        { name: 'Anbarda olan məhsullar', count: stats.anbar_count, icon: Building2, color: 'bg-[#50b7f5]', apiPath: '/anbar' },
+
     ];
 
 
@@ -509,7 +541,7 @@ const fetchStats = useCallback(async () => {
                         <div className="flex items-center space-x-2 md:space-x-4">
                             {lastUpdated && (
                                 <span className="text-sm text-gray-500">
-                                    Son yeniləmə: <br /> {lastUpdated.toLocaleTimeString()}
+                                    Son yeniləmə: <br /> 08.18.2025
                                 </span>
                             )}
                             <button
